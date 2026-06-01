@@ -330,8 +330,8 @@ class Record:
         self.id = int(data[0].strip())
         self.age = int(data[1].strip())
         self.name = data[2].strip()
-        self.email = data[2].strip()
-        self.phone = data[2].strip()
+        self.email = data[3].strip()
+        self.phone = data[4].strip()
 
         return self
 
@@ -442,11 +442,10 @@ class Sorter:
         ikey = key
 
         chunks = self.split(path, ikey)
-        print(chunks)
         heap = []
         files = []
 
-        for i, tmp in enumerate(chunks):
+        for tmp in chunks:
             f = open(tmp, "r", encoding="utf-8")
             line = f.readline()
             while line:

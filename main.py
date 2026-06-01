@@ -145,7 +145,7 @@ def generate_worker(sorter: Sorter | SorterCpp, path: str, count: int):
     print("Success!")
 
     current = time.perf_counter()
-    print("Exectution time: ", current - timer)
+    print("Execution time: ", current - timer)
     timer = None
 
 
@@ -158,7 +158,7 @@ def sort_worker(sorter: Sorter | SorterCpp, path: str, key: int):
     print("Success!")
 
     current = time.perf_counter()
-    print("Exectution time: ", current - timer)
+    print("Execution time: ", current - timer)
     timer = None
 
 

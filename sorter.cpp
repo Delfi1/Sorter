@@ -1,11 +1,14 @@
 #include <iostream>
 #include <fstream>
-#include <ostream>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <queue>
+#include <cstdio>
+
+const int BUF_SIZE = 1024 * 256;
 
 const std::vector<std::string> FIRST_NAMES = {
     "Liam", "Noah", "Oliver", "Elijah", "James", "William", "Benjamin", "Lucas", "Henry", "Theodore",
@@ -57,6 +60,7 @@ const std::vector<std::string> EMAILS = {
 };
 
 class std::vector<std::string> DOMAINS = {"@example.com", "@gmail.com", "@yahoo.com", "@outlook.com"};
+int ikey = 0;
 
 class Record {
 public:
@@ -70,11 +74,11 @@ public:
     // Returns true if a field hihger than b
     bool cmp(Record &rhs, int key) {
         switch (key) {
-            case 1: return this->age < rhs.age;
-            case 2: return this->name < rhs.name;
-            case 3: return this->email < rhs.email;
-            case 4: return this->phone < rhs.phone;
-            default: return this->id < rhs.id; // 0
+            case 1: return this->age > rhs.age;
+            case 2: return this->name > rhs.name;
+            case 3: return this->email > rhs.email;
+            case 4: return this->phone > rhs.phone;
+            default: return this->id > rhs.id; // 0
         };
     }
 
@@ -90,6 +94,26 @@ public:
     }
 
     Record() {}
+
+    void parse(std::string line) {
+        std::stringstream stream(line);
+        std::string cell;
+        if (std::getline(stream, cell, ',')) this->id = std::stoi(cell);
+        if (std::getline(stream, cell, ',')) this->age = std::stoi(cell);
+        if (std::getline(stream, cell, ',')) this->name = cell;
+        if (std::getline(stream, cell, ',')) this->email = cell;
+        if (std::getline(stream, cell, ',')) this->phone = cell;
+    }
+
+    bool operator()(const Record& a, const Record& b) {
+        switch (ikey) {
+            case 1: return a.age > b.age;
+            case 2: return a.name > b.name;
+            case 3: return a.email > b.email;
+            case 4: return a.phone > b.phone;
+            default: return a.id > b.id; // 0
+        };
+    }
 
     Record(int id) {
         std::random_device rd;
@@ -113,54 +137,90 @@ public:
     }
 };
 
-// Status is refference to a value that can be scanned from py
-int sorter(int* status, char* path, int key) {
-    std::ifstream file(path);
+void sort_store(std::vector<Record>* buffer, std::vector<std::string>* chunks) {
+    std::string path = "./temp" + std::to_string(chunks->size()) + ".txt";
+    std::ofstream out;
+    char data[8192];
 
-    if (!file.is_open()) {
-        std::cerr << "File open error" << std::endl;
-        return 1;
+    out.rdbuf()->pubsetbuf(data, sizeof(data));
+    out.open(path, std::ios::binary);
+
+    std::sort(buffer->begin(), buffer->end(), [](Record &a, Record &b) {
+        return a.cmp(b, ikey);
+    });
+
+    for (Record v : *buffer) {
+        out << v.to_string() << "\n";
     }
 
-    std::ofstream temp("./temp.txt");
-    std::ofstream out;
+    chunks->push_back(path);
+    out.close();
+}
 
-    int chunk = 0;
-    std::stringstream ss;
+std::vector<std::string> split(char* path) {
+    std::vector<std::string> result;
+    std::vector<Record> buff;
+
+    std::ifstream file(path);
     std::string line;
-    std::vector<Record> buf;
 
-    // Skip first (header) line
+    // skip first (header) line
     std::getline(file, line);
 
     while (std::getline(file, line)) {
-        std::string cell;
         Record row;
+        row.parse(line);
+        buff.push_back(row);
 
-        if (std::getline(ss, cell, ',')) row.id = std::stoi(cell);
-        if (std::getline(ss, cell, ',')) row.age = std::stoi(cell);
-        if (std::getline(ss, cell, ',')) row.name = cell;
-        if (std::getline(ss, cell, ',')) row.email = cell;
-        if (std::getline(ss, cell, ',')) row.phone = cell;
-
-        int i = 0;
-        buf.push_back(row);
-        *status = *status + 1;
-
-        if (chunk == 0) {
-            if (buf.size() >= 1024) {
-                sort(buf.begin(), buf.end(), [key](Record &a, Record &b) {
-                    return a.cmp(b, key);
-                });
-
-            }
+        if (buff.size() > BUF_SIZE) {
+            sort_store(&buff, &result);
+            buff.clear();
         }
-
-        chunk++;
     }
 
-    file.close();
+    if (buff.size() > 0) {
+        sort_store(&buff, &result);
+    }
+
+    return result;
+}
+
+// Status is refference to a value that can be scanned from py
+int sorter(int* status, char* path, int key) {
+    ikey = key;
+    std::vector<std::string> chunks = split(path);
+    std::priority_queue<Record, std::vector<Record>, Record> heap;
+
+    for (std::string tmp : chunks) {
+        std::ifstream f(tmp);
+        std::string line;
+        while (std::getline(f, line)) {
+            Record row;
+            row.parse(line);
+            heap.push(row);
+        }
+        f.close();
+    }
+
+    char buffer[8192];
+    std::ofstream out;
+    out.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
+    out.open("./result.txt", std::ios::binary);
+
+    out << "id,age,name,email,phone\n";
+    std::vector<Record> result;
+    while (!heap.empty()) {
+        Record row = heap.top();
+        heap.pop();
+
+        out << row.to_string() << "\n";
+    }
+
     out.close();
+    for (std::string p : chunks) {
+        std::remove(p.c_str());
+    }
+
     return 0;
 }
 
