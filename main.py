@@ -1,5 +1,7 @@
 import ctypes
+import sys
 import threading
+import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -76,7 +78,9 @@ def on_closing():
 
 
 running = True
+timer = None
 root = tk.Tk()
+root.resizable(False, False)
 root.protocol("WM_DELETE_WINDOW", on_closing)
 root.title("Sorting files")
 root["bg"] = BG_COLOR
@@ -134,15 +138,28 @@ def sorting_worker(sorter: Sorter | SorterCpp, path: str, key: int):
 
 
 def generate_worker(sorter: Sorter | SorterCpp, path: str, count: int):
+    global timer
     print("Generating!")
+    timer = time.perf_counter()
     sorter.generate(path, count)
     print("Success!")
 
+    current = time.perf_counter()
+    print("Exectution time: ", current - timer)
+    timer = None
+
 
 def sort_worker(sorter: Sorter | SorterCpp, path: str, key: int):
+    global timer
+
     print("Sorting")
+    timer = time.perf_counter()
     sorter.sort(path, key)
     print("Success!")
+
+    current = time.perf_counter()
+    print("Exectution time: ", current - timer)
+    timer = None
 
 
 def on_generate():
@@ -164,12 +181,15 @@ def on_sort():
 gen_btn = tk.Button(text="Generate", command=on_generate, **BTN_STYLE)
 gen_btn.place(x=10, y=60)
 
-gen_btn = tk.Button(text="Sort", command=on_sort, **BTN_STYLE)
-gen_btn.place(x=120, y=60)
+sort_btn = tk.Button(text="Sort", command=on_sort, **BTN_STYLE)
+sort_btn.place(x=120, y=60)
 
 gb_var = tk.DoubleVar(root, 1.0)
 status_text = tk.StringVar(root)
 status_label = tk.Label(textvariable=status_text, **LBL_STYLE)
+
+timer_var = tk.StringVar(root)
+timer_label = tk.Label(textvariable=timer_var, **LBL_STYLE)
 
 progress_var = tk.IntVar(root, 0)
 progress = ttk.Progressbar(
@@ -182,6 +202,7 @@ progress = ttk.Progressbar(
 )
 progress.place(x=10, y=125)
 status_label.place(x=10, y=155)
+timer_label.place(x=10, y=175)
 
 sort_options = ["Id", "Age", "Name", "Email", "Phone"]
 selected_key = tk.StringVar(root, sort_options[0])
@@ -211,7 +232,17 @@ while running:
     except Exception as _:
         ...
 
+    last = timer
+    if last:
+        sort_btn.config(state="disabled")
+        gen_btn.config(state="disabled")
+        delta = time.perf_counter() - last
+        timer_var.set(f"{delta:.2f}s")
+    else:
+        sort_btn.config(state="active")
+        gen_btn.config(state="active")
+
     root.update()
 
 root.destroy()
-exit()
+sys.exit()

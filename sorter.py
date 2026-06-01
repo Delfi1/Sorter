@@ -1,6 +1,8 @@
+import heapq
+import os
 import random
 
-BUF_SIZE = 1024
+BUF_SIZE = 1024 * 256
 
 FIRST_NAMES = [
     "Liam",
@@ -312,6 +314,7 @@ EMAILS = [
 ]
 
 DOMAINS = ["@example.com", "@gmail.com", "@yahoo.com", "@outlook.com"]
+ikey = 0
 
 
 class Record:
@@ -322,19 +325,44 @@ class Record:
         self.email: str = str()
         self.phone: str = str()
 
-    # Returns true if self field hihger than b
-    def cmp(self, b, key: int) -> bool:
+    def parse(self, line: str):
+        data = line.split(",")
+        self.id = int(data[0].strip())
+        self.age = int(data[1].strip())
+        self.name = data[2].strip()
+        self.email = data[2].strip()
+        self.phone = data[2].strip()
+
+        return self
+
+    # Returns value by key id
+    def value(self, key: int) -> int | str:
         match key:
             case 1:
-                return self.age > b.age
+                return self.age
             case 2:
-                return self.name > b.name
+                return self.name
             case 3:
-                return self.email > b.email
+                return self.email
             case 4:
-                return self.phone > b.phone
+                return self.phone
             case _:
-                return self.id > b.id  # 0
+                return self.id  # 0
+
+    def __lt__(self, other):
+        global ikey
+
+        match ikey:
+            case 1:
+                return self.age < other.age
+            case 2:
+                return self.name < other.name
+            case 3:
+                return self.email < other.email
+            case 4:
+                return self.phone < other.phone
+            case _:
+                return self.id < other.id
 
     def generate(self, id: int):
         self.id = id
@@ -350,7 +378,7 @@ class Record:
         for _ in range(0, 10):
             self.phone += str(random.randint(0, 9))
 
-    def to_string(self) -> str:
+    def __str__(self) -> str:
         result = str()
         result += str(self.id) + ","
         result += str(self.age) + ","
@@ -365,18 +393,81 @@ class Sorter:
         self.status = 0
 
     def generate(self, path: str, count: int):
-        with open(path, "w", encoding="utf-8") as file:
+        self.status = 0
+        with open(path, "w", encoding="utf-8", buffering=8192) as file:
+            file.write("id,age,name,email,phone\n")
             for i in range(count):
                 record = Record()
                 record.generate(i)
-                file.write(record.to_string() + "\n")
-
-                if i % BUF_SIZE == 0:
-                    file.flush()
+                file.write(str(record) + "\n")
 
                 self.status += 1
 
-    def sort(self, path: str, key: int): ...
+    def split(self, path: str, key: int):
+        buff = []
+        chunks = []
+
+        def sort_store():
+            buff.sort(key=lambda r: r.value(key))
+            path = f"./temp{len(chunks)}.txt"
+            with open(path, "w", encoding="utf-8", buffering=8192) as f:
+                for v in buff:
+                    f.write(str(v) + "\n")
+
+            chunks.append(path)
+
+        with open(path, "r", encoding="utf-8") as file:
+            # Skip first line
+            file.readline()
+
+            line = file.readline()
+            while line:
+                self.status += 1
+                buff.append(Record().parse(line))
+
+                if len(buff) > BUF_SIZE:
+                    sort_store()
+                    buff = []
+
+                line = file.readline()
+
+        if buff:
+            sort_store()
+
+        return chunks
+
+    def sort(self, path: str, key: int):
+        global ikey
+        self.status = 0
+        ikey = key
+
+        chunks = self.split(path, ikey)
+        print(chunks)
+        heap = []
+        files = []
+
+        for i, tmp in enumerate(chunks):
+            f = open(tmp, "r", encoding="utf-8")
+            line = f.readline()
+            while line:
+                r = Record().parse(line)
+                heapq.heappush(heap, r)
+                line = f.readline()
+            files.append((tmp, f))
+
+        with open("./result.txt", "w", encoding="utf-8") as out:
+            out.write("id,age,name,email,phone\n")
+            result = []
+            while heap:
+                r = heapq.heappop(heap)
+                result.append(r)
+            result.sort(key=lambda v: v.value(ikey))
+            for v in result:
+                out.write(str(v) + "\n")
+
+        for p, f in files:
+            f.close()
+            os.remove(p)
 
     def value(self) -> int:
         return self.status

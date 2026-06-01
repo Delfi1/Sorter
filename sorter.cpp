@@ -5,8 +5,7 @@
 #include <string>
 #include <vector>
 #include <random>
-
-const int BUF_SIZE = 1024;
+#include <algorithm>
 
 const std::vector<std::string> FIRST_NAMES = {
     "Liam", "Noah", "Oliver", "Elijah", "James", "William", "Benjamin", "Lucas", "Henry", "Theodore",
@@ -69,13 +68,13 @@ public:
 
     // Compare to values
     // Returns true if a field hihger than b
-    bool cmp(Record &a, Record &b, int key) {
+    bool cmp(Record &rhs, int key) {
         switch (key) {
-            case 1: return a.age > b.age;
-            case 2: return a.name > b.name;
-            case 3: return a.email > b.email;
-            case 4: return a.phone > b.phone;
-            default: return a.id > b.id; // 0
+            case 1: return this->age < rhs.age;
+            case 2: return this->name < rhs.name;
+            case 3: return this->email < rhs.email;
+            case 4: return this->phone < rhs.phone;
+            default: return this->id < rhs.id; // 0
         };
     }
 
@@ -123,11 +122,16 @@ int sorter(int* status, char* path, int key) {
         return 1;
     }
 
-    std::ofstream out("./result.txt");
+    std::ofstream temp("./temp.txt");
+    std::ofstream out;
 
+    int chunk = 0;
     std::stringstream ss;
     std::string line;
     std::vector<Record> buf;
+
+    // Skip first (header) line
+    std::getline(file, line);
 
     while (std::getline(file, line)) {
         std::string cell;
@@ -139,7 +143,20 @@ int sorter(int* status, char* path, int key) {
         if (std::getline(ss, cell, ',')) row.email = cell;
         if (std::getline(ss, cell, ',')) row.phone = cell;
 
+        int i = 0;
+        buf.push_back(row);
         *status = *status + 1;
+
+        if (chunk == 0) {
+            if (buf.size() >= 1024) {
+                sort(buf.begin(), buf.end(), [key](Record &a, Record &b) {
+                    return a.cmp(b, key);
+                });
+
+            }
+        }
+
+        chunk++;
     }
 
     file.close();
@@ -148,13 +165,15 @@ int sorter(int* status, char* path, int key) {
 }
 
 int generator(int* status, char* path, int count) {
-    std::ofstream out(path);
+    char buffer[8192];
+    std::ofstream out;
+    out.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
+    out.open(path, std::ios::binary);
+
+    out << "id,age,name,email,phone\n";
     for (int i = 0; i < count; i++) {
         out << Record(i).to_string() << "\n";
         *status = *status + 1;
-
-        // Flush all data if more than buf
-        if (i % BUF_SIZE == 0) out.flush();
     }
 
     out.close();
