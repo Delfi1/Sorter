@@ -2,7 +2,7 @@ import heapq
 import os
 import random
 
-BUF_SIZE = 1024 * 256
+BUF_SIZE = 1024 * 128
 
 FIRST_NAMES = [
     "Liam",
@@ -388,6 +388,63 @@ class Record:
         return result
 
 
+def merge(output, k):
+    heap = []
+    out = open(output, "w")
+    files = [open(f"{i}.tmp", "r") for i in range(k)]
+
+    for i in range(k):
+        element = files[i].readline().strip()
+        if element:
+            r = Record().parse(element)
+            heapq.heappush(heap, (r, i))
+
+    while heap:
+        root = heapq.heappop(heap)
+        out.write(str(root[0]) + "\n")
+
+        element = files[root[1]].readline().strip()
+        if element:
+            r = Record().parse(element)
+            heapq.heappush(heap, (r, root[1]))
+
+    for i in range(k):
+        files[i].close()
+        os.remove(f"{i}.tmp")
+    out.close()
+
+
+def create_runs(input_file, run_size, num):
+    file = open(input_file, "r")
+    file.readline()  # Skip first line
+    out_files = [open(f"{i}.tmp", "w") for i in range(num)]
+
+    more_input = True
+    next_output_file = 0
+
+    while more_input:
+        data = []
+        for _ in range(run_size):
+            line = file.readline().strip()
+            if line:
+                r = Record().parse(line)
+                data.append(r)
+            else:
+                more_input = False
+                break
+
+        data.sort()
+        for r in data:
+            out_files[next_output_file].write(str(r) + "\n")
+
+        next_output_file += 1
+
+    for i in range(num):
+        out_files[i].close()
+
+    file.close()
+
+
 class Sorter:
     def __init__(self):
         self.status = 0
@@ -403,70 +460,13 @@ class Sorter:
 
                 self.status += 1
 
-    def split(self, path: str, key: int):
-        buff = []
-        chunks = []
-
-        def sort_store():
-            buff.sort(key=lambda r: r.value(key))
-            path = f"./temp{len(chunks)}.txt"
-            with open(path, "w", encoding="utf-8", buffering=8192) as f:
-                for v in buff:
-                    f.write(str(v) + "\n")
-
-            chunks.append(path)
-
-        with open(path, "r", encoding="utf-8") as file:
-            # Skip first line
-            file.readline()
-
-            line = file.readline()
-            while line:
-                self.status += 1
-                buff.append(Record().parse(line))
-
-                if len(buff) > BUF_SIZE:
-                    sort_store()
-                    buff = []
-
-                line = file.readline()
-
-        if buff:
-            sort_store()
-
-        return chunks
-
     def sort(self, path: str, key: int):
         global ikey
-        self.status = 0
         ikey = key
 
-        chunks = self.split(path, ikey)
-        heap = []
-        files = []
-
-        for tmp in chunks:
-            f = open(tmp, "r", encoding="utf-8")
-            line = f.readline()
-            while line:
-                r = Record().parse(line)
-                heapq.heappush(heap, r)
-                line = f.readline()
-            files.append((tmp, f))
-
-        with open("./result.txt", "w", encoding="utf-8") as out:
-            out.write("id,age,name,email,phone\n")
-            result = []
-            while heap:
-                r = heapq.heappop(heap)
-                result.append(r)
-            result.sort(key=lambda v: v.value(ikey))
-            for v in result:
-                out.write(str(v) + "\n")
-
-        for p, f in files:
-            f.close()
-            os.remove(p)
+        num = 128
+        create_runs(path, BUF_SIZE, num)
+        merge("result.txt", num)
 
     def value(self) -> int:
         return self.status

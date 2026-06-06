@@ -1,9 +1,12 @@
 import ctypes
+import os
 import sys
 import threading
 import time
 import tkinter as tk
 from tkinter import ttk
+
+import psutil
 
 from sorter import Sorter
 from sorter_cpp import SorterCpp
@@ -87,6 +90,8 @@ root["bg"] = BG_COLOR
 root.geometry("500x250")
 style = ttk.Style()
 style.theme_use("default")
+pid = os.getpid()
+process = psutil.Process(pid)
 
 style.configure(
     "Custom.Horizontal.TProgressbar",
@@ -191,6 +196,10 @@ status_label = tk.Label(textvariable=status_text, **LBL_STYLE)
 timer_var = tk.StringVar(root)
 timer_label = tk.Label(textvariable=timer_var, **LBL_STYLE)
 
+memory_var = tk.StringVar(root)
+memory_label = tk.Label(textvariable=memory_var, **LBL_STYLE)
+
+
 progress_var = tk.IntVar(root, 0)
 progress = ttk.Progressbar(
     root,
@@ -203,6 +212,7 @@ progress = ttk.Progressbar(
 progress.place(x=10, y=125)
 status_label.place(x=10, y=155)
 timer_label.place(x=10, y=175)
+memory_label.place(x=85, y=155)
 
 sort_options = ["Id", "Age", "Name", "Email", "Phone"]
 selected_key = tk.StringVar(root, sort_options[0])
@@ -241,6 +251,9 @@ while running:
     else:
         sort_btn.config(state="active")
         gen_btn.config(state="active")
+
+    mem = process.memory_info().rss / (1024**2)
+    memory_var.set(f"{mem:.1f}MB")
 
     root.update()
 

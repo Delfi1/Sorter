@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 #include <random>
-#include <algorithm>
-#include <queue>
 #include <cstdio>
 
 const int BUF_SIZE = 1024 * 256;
@@ -105,16 +103,27 @@ public:
         if (std::getline(stream, cell, ',')) this->phone = cell;
     }
 
-    bool operator()(const Record& a, const Record& b) {
+    bool operator>(const Record& b) {
         switch (ikey) {
-            case 1: return a.age > b.age;
-            case 2: return a.name > b.name;
-            case 3: return a.email > b.email;
-            case 4: return a.phone > b.phone;
-            default: return a.id > b.id; // 0
+            case 1: return this->age > b.age;
+            case 2: return this->name > b.name;
+            case 3: return this->email > b.email;
+            case 4: return this->phone > b.phone;
+            default: return this->id > b.id; // 0
         };
     }
 
+    bool operator<(const Record& b) {
+        switch (ikey) {
+            case 1: return this->age < b.age;
+            case 2: return this->name < b.name;
+            case 3: return this->email < b.email;
+            case 4: return this->phone < b.phone;
+            default: return this->id < b.id; // 0
+        };
+    }
+
+    // Generate random row
     Record(int id) {
         std::random_device rd;
         std::mt19937 rng(rd());
@@ -137,89 +146,223 @@ public:
     }
 };
 
-void sort_store(std::vector<Record>* buffer, std::vector<std::string>* chunks) {
-    std::string path = "./temp" + std::to_string(chunks->size()) + ".txt";
-    std::ofstream out;
-    char data[8192];
+struct HeapNode {
+    Record element;
+    int index;
+};
 
-    out.rdbuf()->pubsetbuf(data, sizeof(data));
-    out.open(path, std::ios::binary);
-
-    std::sort(buffer->begin(), buffer->end(), [](Record &a, Record &b) {
-        return a.cmp(b, ikey);
-    });
-
-    for (Record v : *buffer) {
-        out << v.to_string() << "\n";
-    }
-
-    chunks->push_back(path);
-    out.close();
+void swap(HeapNode* x, HeapNode* y)
+{
+    HeapNode temp = *x;
+    *x = *y;
+    *y = temp;
 }
 
-std::vector<std::string> split(char* path) {
-    std::vector<std::string> result;
-    std::vector<Record> buff;
+class Heap {
 
-    std::ifstream file(path);
-    std::string line;
+    // pointer to array of elements in heap
+    HeapNode* harr;
 
-    // skip first (header) line
-    std::getline(file, line);
+    // size of min heap
+    int heap_size;
 
-    while (std::getline(file, line)) {
-        Record row;
-        row.parse(line);
-        buff.push_back(row);
+public:
 
-        if (buff.size() > BUF_SIZE) {
-            sort_store(&buff, &result);
-            buff.clear();
+    // Constructor: creates a min
+    // heap of given size
+    Heap(HeapNode a[], int size);
+
+    // to heapify a subtree with
+    // root at given index
+    void Heapify(int);
+
+    // to get index of left child
+    // of node at index i
+    int left(int i) { return (2 * i + 1); }
+
+    // to get index of right child
+    // of node at index i
+    int right(int i) { return (2 * i + 2); }
+
+    // to get the root
+    HeapNode getMin() { return harr[0]; }
+
+    // to replace root with new node
+    // x and heapify() new root
+    void replaceMin(HeapNode x)
+    {
+        harr[0] = x;
+        Heapify(0);
+    }
+};
+
+Heap::Heap(HeapNode a[], int size)
+{
+    heap_size = size;
+    harr = a; // store address of array
+    int i = (heap_size - 1) / 2;
+    while (i >= 0) {
+        Heapify(i);
+        i--;
+    }
+}
+
+void Heap::Heapify(int i)
+{
+    int l = left(i);
+    int r = right(i);
+    int smallest = i;
+
+    if (l < heap_size && harr[l].element < harr[i].element)
+        smallest = l;
+
+    if (r < heap_size
+        && harr[r].element < harr[smallest].element)
+        smallest = r;
+
+    if (smallest != i) {
+        swap(&harr[i], &harr[smallest]);
+        Heapify(smallest);
+    }
+}
+
+void merge(int arr[], int l, int m, int r)
+{
+    int i, j, k;
+    int n1 = m - l + 1;
+    int n2 = r - m;
+    int L[n1], R[n2];
+
+    for (i = 0; i < n1; i++)
+        L[i] = arr[l + i];
+    for (j = 0; j < n2; j++)
+        R[j] = arr[m + 1 + j];
+
+    i = 0;
+    j = 0;
+    k = l;
+    while (i < n1 && j < n2) {
+        if (L[i] <= R[j])
+            arr[k++] = L[i++];
+        else
+            arr[k++] = R[j++];
+    }
+
+    while (i < n1)
+        arr[k++] = L[i++];
+
+    while (j < n2)
+        arr[k++] = R[j++];
+}
+
+void mergeSort(int arr[], int l, int r)
+{
+    if (l < r) {
+        int m = l + (r - l) / 2;
+
+        mergeSort(arr, l, m);
+        mergeSort(arr, m + 1, r);
+        merge(arr, l, m, r);
+    }
+}
+
+FILE* openFile(char* fileName, char* mode)
+{
+    FILE* fp = fopen(fileName, mode);
+    if (fp == NULL) {
+        perror("Error while opening the file.\n");
+        exit(EXIT_FAILURE);
+    }
+    return fp;
+}
+
+void mergeFiles(char* output_file, int k)
+{
+    FILE* in[k];
+    for (int i = 0; i < k; i++) {
+        char* fileName = (std::to_string(i) + ".tmp").data();
+        in[i] = openFile(fileName, "r");
+    }
+
+    FILE* out = openFile(output_file, "w");
+
+    HeapNode* harr = new HeapNode[k];
+    int i;
+    for (i = 0; i < k; i++) {
+        if (fscanf(in[i], "%d ", &harr[i].element) != 1)
+            break;
+
+        harr[i].i = i;
+    }
+    Heap hp(harr, i);
+
+    int count = 0;
+    while (count != i) {
+        HeapNode root = hp.getMin();
+        fprintf(out, root.element.to_string().c_str());
+
+        if (fscanf(in[root.index], "%d ", &root.element) != 1) {
+            count++;
         }
+
+        hp.replaceMin(root);
     }
 
-    if (buff.size() > 0) {
-        sort_store(&buff, &result);
+    for (int i = 0; i < k; i++)
+        fclose(in[i]);
+
+    fclose(out);
+}
+
+void createRuns(char* file, int run_size, int num)
+{
+    FILE* in = openFile(file, "r");
+
+    FILE* out[num];
+    char fileName[2];
+    for (int i = 0; i < num; i++) {
+        snprintf(fileName, sizeof(fileName), "%d", i);
+
+        out[i] = openFile(fileName, "w");
     }
 
-    return result;
+    int* arr = (int*)malloc(run_size * sizeof(int));
+
+    bool more_input = true;
+    int next_output_file = 0;
+
+    int i;
+    while (more_input) {
+        for (i = 0; i < run_size; i++) {
+            if (fscanf(in, "%d ", &arr[i]) != 1) {
+                more_input = false;
+                break;
+            }
+        }
+
+        mergeSort(arr, 0, i - 1);
+
+        for (int j = 0; j < i; j++)
+            fprintf(out[next_output_file], "%d ", arr[j]);
+
+        next_output_file++;
+    }
+
+    for (int i = 0; i < num; i++)
+        fclose(out[i]);
+        std::remove((std::to_string(i) + ".tmp").c_str());
+
+    fclose(in);
 }
 
 // Status is refference to a value that can be scanned from py
 int sorter(int* status, char* path, int key) {
     ikey = key;
-    std::vector<std::string> chunks = split(path);
-    std::priority_queue<Record, std::vector<Record>, Record> heap;
 
-    for (std::string tmp : chunks) {
-        std::ifstream f(tmp);
-        std::string line;
-        while (std::getline(f, line)) {
-            Record row;
-            row.parse(line);
-            heap.push(row);
-        }
-        f.close();
-    }
+    int num = 128;
+    createRuns(path, BUF_SIZE, num);
 
-    char buffer[8192];
-    std::ofstream out;
-    out.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
-    out.open("./result.txt", std::ios::binary);
-
-    out << "id,age,name,email,phone\n";
-    std::vector<Record> result;
-    while (!heap.empty()) {
-        Record row = heap.top();
-        heap.pop();
-
-        out << row.to_string() << "\n";
-    }
-
-    out.close();
-    for (std::string p : chunks) {
-        std::remove(p.c_str());
-    }
+    mergeFiles("result.txt", num);
 
     return 0;
 }
