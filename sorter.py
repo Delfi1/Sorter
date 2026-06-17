@@ -1,318 +1,19 @@
 import heapq
+import math
 import os
 import random
 
 BUF_SIZE = 1024 * 128
 
-FIRST_NAMES = [
-    "Liam",
-    "Noah",
-    "Oliver",
-    "Elijah",
-    "James",
-    "William",
-    "Benjamin",
-    "Lucas",
-    "Henry",
-    "Theodore",
-    "Jack",
-    "Levi",
-    "Alexander",
-    "Owen",
-    "Asher",
-    "Samuel",
-    "Leo",
-    "Felix",
-    "Silas",
-    "Hudson",
-    "Ezra",
-    "Jasper",
-    "Jude",
-    "Rowan",
-    "Finn",
-    "Milo",
-    "Arthur",
-    "Sebastian",
-    "Julian",
-    "Caleb",
-    "Thomas",
-    "Gabriel",
-    "Victor",
-    "Olivia",
-    "Emma",
-    "Charlotte",
-    "Amelia",
-    "Sophia",
-    "Isabella",
-    "Mia",
-    "Evelyn",
-    "Harper",
-    "Luna",
-    "Camila",
-    "Gianna",
-    "Eliana",
-    "Ella",
-    "Violet",
-    "Hazel",
-    "Willow",
-    "Lily",
-    "Aurora",
-    "Penelope",
-    "Eleanor",
-    "Clara",
-    "Rose",
-    "Ivy",
-    "Alice",
-    "Cora",
-    "Ruby",
-    "Iris",
-    "Nora",
-    "Genevieve",
-    "Maeve",
-    "Maya",
-    "Chloe",
-    "Avery",
-    "Quinn",
-    "Taylor",
-    "Morgan",
-    "Finley",
-    "Jordan",
-    "Cameron",
-    "Riley",
-    "Peyton",
-    "Sage",
-    "Alex",
-    "Robin",
-    "Logan",
-    "Casey",
-    "Reese",
-    "Jamie",
-    "Skyler",
-    "Shiloh",
-    "River",
-    "Parker",
-    "Emerson",
-    "Dallas",
-    "Phoenix",
-    "Dakota",
-    "Tatum",
-    "Hayden",
-    "Harley",
-    "Marley",
-    "Remy",
-    "Rory",
-    "Aspen",
-    "Charlie",
-    "Eden",
-    "Wren",
-]
 
-LAST_NAMES = [
-    "Smith",
-    "Johnson",
-    "Williams",
-    "Brown",
-    "Jones",
-    "Garcia",
-    "Miller",
-    "Davis",
-    "Rodriguez",
-    "Martinez",
-    "Hernandez",
-    "Lopez",
-    "Gonzalez",
-    "Wilson",
-    "Anderson",
-    "Thomas",
-    "Taylor",
-    "Moore",
-    "Jackson",
-    "Martin",
-    "Lee",
-    "Perez",
-    "Thompson",
-    "White",
-    "Harris",
-    "Sanchez",
-    "Clark",
-    "Ramirez",
-    "Lewis",
-    "Robinson",
-    "Walker",
-    "Young",
-    "Allen",
-    "King",
-    "Wright",
-    "Scott",
-    "Torres",
-    "Nguyen",
-    "Hill",
-    "Flores",
-    "Green",
-    "Adams",
-    "Nelson",
-    "Baker",
-    "Hall",
-    "Rivera",
-    "Campbell",
-    "Mitchell",
-    "Carter",
-    "Roberts",
-    "Gomez",
-    "Phillips",
-    "Evans",
-    "Turner",
-    "Diaz",
-    "Parker",
-    "Cruz",
-    "Edwards",
-    "Collins",
-    "Reyes",
-    "Stewart",
-    "Morris",
-    "Morales",
-    "Murphy",
-    "Cook",
-    "Rogers",
-    "Gutierrez",
-    "Ortiz",
-    "Morgan",
-    "Cooper",
-    "Peterson",
-    "Bailey",
-    "Reed",
-    "Kelly",
-    "Howard",
-    "Ramos",
-    "Kim",
-    "Cox",
-    "Ward",
-    "Richardson",
-    "Watson",
-    "Brooks",
-    "Chavez",
-    "Wood",
-    "James",
-    "Bennett",
-    "Gray",
-    "Mendoza",
-    "Ruiz",
-    "Hughes",
-    "Price",
-    "Alvarez",
-    "Castillo",
-    "Sanders",
-    "Patel",
-    "Myers",
-    "Long",
-    "Ross",
-    "Foster",
-    "Jimenez",
-]
+def load_data(name: str) -> list[str]:
+    with open(name, "r") as f:
+        return [line.strip() for line in f]
 
-EMAILS = [
-    "cyber_ghost99",
-    "pixel.wizard",
-    "shadow_ninja",
-    "quantum_coder",
-    "cosmic.wanderer",
-    "alpha_omega",
-    "techno_vibe",
-    "silver_fox42",
-    "neon_rider",
-    "digital.nomad",
-    "sonic_boom",
-    "iron_clad",
-    "frost_bite",
-    "phoenix_rising",
-    "storm_bringer",
-    "starlight_01",
-    "hyper_drive",
-    "velvet_glove",
-    "mystic_river",
-    "golden_eagle",
-    "retro_gamer",
-    "matrix_reloaded",
-    "lunar_eclipse",
-    "solar_flare",
-    "vortex_traveler",
-    "zen_master",
-    "code_monkey",
-    "binary_boss",
-    "cyber_punk",
-    "echo_location",
-    "whispering_wind",
-    "silent_assassin",
-    "wild_card",
-    "night_owl",
-    "early_bird",
-    "coffee_addict",
-    "book_worm",
-    "movie_buff",
-    "music_lover",
-    "globetrotter",
-    "urban_explorer",
-    "nature_lover",
-    "beach_bum",
-    "mountain_goat",
-    "sky_diver",
-    "deep_sea",
-    "star_gazer",
-    "dream_catcher",
-    "peace_maker",
-    "risk_taker",
-    "trend_setter",
-    "game_changer",
-    "thought_leader",
-    "problem_solver",
-    "pixel_perfect",
-    "bug_hunter",
-    "data_miner",
-    "cloud_surfer",
-    "network_ninja",
-    "security_guru",
-    "crypto_king",
-    "token_master",
-    "block_chain",
-    "web_developer",
-    "app_designer",
-    "ui_ux_pro",
-    "qa_wizard",
-    "devops_guy",
-    "sysadmin_pro",
-    "tech_savvy",
-    "gadget_geek",
-    "sci_fi_fan",
-    "fantasy_nerd",
-    "comic_book",
-    "anime_lover",
-    "manga_reader",
-    "j-pop_fan",
-    "k-pop_stan",
-    "rock_star",
-    "pop_diva",
-    "jazz_cat",
-    "blues_man",
-    "hip_hop_head",
-    "dj_remix",
-    "sound_wave",
-    "beat_maker",
-    "lyrics_writer",
-    "art_lover",
-    "photo_grapher",
-    "video_grapher",
-    "content_creator",
-    "vlogger_life",
-    "blogger_world",
-    "influencer_00",
-    "social_media",
-    "digital_art",
-    "sketch_artist",
-    "painter_pro",
-    "sculptor_01",
-    "creative_mind",
-]
 
+FIRST_NAMES = load_data("FirstN.txt")
+LAST_NAMES = load_data("LastN.txt")
+EMAILS = load_data("Emails.txt")
 DOMAINS = ["@example.com", "@gmail.com", "@yahoo.com", "@outlook.com"]
 ikey = 0
 
@@ -388,69 +89,13 @@ class Record:
         return result
 
 
-def merge(output, k):
-    heap = []
-    out = open(output, "w")
-    files = [open(f"{i}.tmp", "r") for i in range(k)]
-
-    for i in range(k):
-        element = files[i].readline().strip()
-        if element:
-            r = Record().parse(element)
-            heapq.heappush(heap, (r, i))
-
-    while heap:
-        root = heapq.heappop(heap)
-        out.write(str(root[0]) + "\n")
-
-        element = files[root[1]].readline().strip()
-        if element:
-            r = Record().parse(element)
-            heapq.heappush(heap, (r, root[1]))
-
-    for i in range(k):
-        files[i].close()
-        os.remove(f"{i}.tmp")
-    out.close()
-
-
-def create_runs(input_file, run_size, num):
-    file = open(input_file, "r")
-    file.readline()  # Skip first line
-    out_files = [open(f"{i}.tmp", "w") for i in range(num)]
-
-    more_input = True
-    next_output_file = 0
-
-    while more_input:
-        data = []
-        for _ in range(run_size):
-            line = file.readline().strip()
-            if line:
-                r = Record().parse(line)
-                data.append(r)
-            else:
-                more_input = False
-                break
-
-        data.sort()
-        for r in data:
-            out_files[next_output_file].write(str(r) + "\n")
-
-        next_output_file += 1
-
-    for i in range(num):
-        out_files[i].close()
-
-    file.close()
-
-
 class Sorter:
     def __init__(self):
-        self.status = 0
+        self.status = 0.0
+        self.lines = 0
 
     def generate(self, path: str, count: int):
-        self.status = 0
+        self.status = 0.0
         with open(path, "w", encoding="utf-8", buffering=8192) as file:
             file.write("id,age,name,email,phone\n")
             for i in range(count):
@@ -458,15 +103,92 @@ class Sorter:
                 record.generate(i)
                 file.write(str(record) + "\n")
 
-                self.status += 1
+                self.status += 1 / count
+
+        self.status = 1.0
+
+    # 0-50% - create runs & sort
+    def create_runs(self, input_file, run_size):
+        self.lines = 0
+
+        with open(input_file, "r") as file:
+            f = file.readline()
+            while f:
+                f = file.readline()
+                self.lines += 1
+
+        file = open(input_file, "r")
+        file.readline()  # Skip first line
+
+        num = math.ceil(self.lines / BUF_SIZE)
+
+        paths = [f"{i}.tmp" for i in range(num)]
+        out_files = [open(p, "w", buffering=8192) for p in paths]
+
+        more_input = True
+        next = 0
+
+        while more_input:
+            data = []
+            for _ in range(run_size):
+                line = file.readline().strip()
+                if line:
+                    r = Record().parse(line)
+                    data.append(r)
+                else:
+                    more_input = False
+                    break
+
+            data.sort()
+            for r in data:
+                out_files[next].write(str(r) + "\n")
+
+            next += 1
+
+        for i in range(num):
+            out_files[i].close()
+
+        file.close()
+        return paths
+
+    def merge(self, output, paths):
+        heap = []
+        out = open(output, "w")
+
+        files = [open(p, "r") for p in paths]
+        k = len(files)
+
+        for i in range(k):
+            element = files[i].readline().strip()
+            if element:
+                r = Record().parse(element)
+                heapq.heappush(heap, (r, i))
+
+        while heap:
+            root = heapq.heappop(heap)
+            out.write(str(root[0]) + "\n")
+
+            element = files[root[1]].readline().strip()
+            if element:
+                r = Record().parse(element)
+                heapq.heappush(heap, (r, root[1]))
+
+            self.status += 1 / self.lines
+
+        self.status = 1.0
+
+        for i in range(k):
+            files[i].close()
+            os.remove(paths[i])
+        out.close()
 
     def sort(self, path: str, key: int):
         global ikey
+        self.status = 0.0
         ikey = key
 
-        num = 128
-        create_runs(path, BUF_SIZE, num)
-        merge("result.txt", num)
+        paths = self.create_runs(path, BUF_SIZE)
+        self.merge("result.txt", paths)
 
-    def value(self) -> int:
+    def value(self) -> float:
         return self.status

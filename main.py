@@ -14,6 +14,8 @@ from sorter_cpp import SorterCpp
 GB = 1024 * 1024 * 16
 
 BG_COLOR = "#2b2b2b"
+# BG_COLOR = "#a9a9a9"
+
 BTN_STYLE = {
     "font": ("Segoe UI", 11, "bold"),
     "bg": "#2563EB",
@@ -226,6 +228,10 @@ def key() -> int:
     return 0
 
 
+def value() -> int:
+    return int(current().value() * 100)
+
+
 countEntry = tk.Entry(root, width=10, textvariable=gb_var, **ENT_STYLE)
 countEntry.place(x=300, y=10)
 
@@ -236,9 +242,9 @@ dropdown["menu"].config(**OPT_STYLE)
 dropdown.place(x=400, y=10)
 
 while running:
-    status_text.set(str(current().value()))
+    status_text.set(str(value()) + "%")
     try:
-        progress_var.set(current().value() * 100 // int(gb_var.get() * GB))
+        progress_var.set(value())
     except Exception as _:
         ...
 
