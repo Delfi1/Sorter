@@ -127,6 +127,7 @@ class Sorter:
 
         more_input = True
         next = 0
+        ratio = 0.5 / self.lines
 
         while more_input:
             data = []
@@ -140,6 +141,7 @@ class Sorter:
                     break
 
             data.sort()
+            self.status += ratio * len(data)
             for r in data:
                 out_files[next].write(str(r) + "\n")
 
@@ -153,10 +155,11 @@ class Sorter:
 
     def merge(self, output, paths):
         heap = []
-        out = open(output, "w")
+        out = open(output, "w", buffering=8192)
 
         files = [open(p, "r") for p in paths]
         k = len(files)
+        ratio = 0.5 / self.lines
 
         for i in range(k):
             element = files[i].readline().strip()
@@ -173,7 +176,7 @@ class Sorter:
                 r = Record().parse(element)
                 heapq.heappush(heap, (r, root[1]))
 
-            self.status += 1 / self.lines
+            self.status += ratio
 
         self.status = 1.0
 

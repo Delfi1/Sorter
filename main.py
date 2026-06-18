@@ -172,7 +172,7 @@ def sort_worker(sorter: Sorter | SorterCpp, path: str, key: int):
 def on_generate():
     global count_var
     thread = threading.Thread(
-        target=generate_worker, args=(current(), "./file.txt", int(gb_var.get() * GB))
+        target=generate_worker, args=(current(), "./file.csv", int(gb_var.get() * GB))
     )
 
     thread.start()
@@ -180,7 +180,7 @@ def on_generate():
 
 def on_sort():
     global key_var
-    thread = threading.Thread(target=sort_worker, args=(current(), "./file.txt", key()))
+    thread = threading.Thread(target=sort_worker, args=(current(), "./file.csv", key()))
 
     thread.start()
 
